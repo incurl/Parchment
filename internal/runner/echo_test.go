@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/incurl/valkyrie/internal/jobs"
+	"github.com/incurl/parchment/internal/jobs"
 )
 
 // TestEchoReturnsThePrompt verifies that the shipped runner echoes the

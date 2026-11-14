@@ -1,4 +1,4 @@
-// Package bindings exposes the Valkyrie backend to the frontend as
+// Package bindings exposes the Parchment backend to the frontend as
 // Wails services.
 //
 // These are the primary communication channel between the React UI and
@@ -7,9 +7,9 @@
 package bindings
 
 import (
-	"github.com/incurl/valkyrie/internal/console"
-	"github.com/incurl/valkyrie/internal/jobs"
-	"github.com/incurl/valkyrie/internal/pocketbase"
+	"github.com/incurl/parchment/internal/console"
+	"github.com/incurl/parchment/internal/jobs"
+	"github.com/incurl/parchment/internal/pocketbase"
 )
 
 // AppService is the main Wails service. It is bound to the frontend and
@@ -170,7 +170,7 @@ func (s *AppService) DeleteArtifact(artifactID string) error {
 }
 
 // AppName is the name of the application.
-const AppName = "Valkyrie"
+const AppName = "Parchment"
 
 // AppVersion is the version of the application.
 const AppVersion = "0.1.0"

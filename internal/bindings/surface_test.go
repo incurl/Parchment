@@ -16,14 +16,22 @@ import (
 var expectedMethods = []string{
 	"CancelJob",
 	"ClearConsoleEntries",
+	"DefaultFoldParams",
 	"DeleteArtifact",
 	"DeleteJob",
+	"DeleteLetter",
+	"ExportLetterPDF",
+	"FoldScene",
+	"GetAppInfo",
+	"GetLetter",
 	"GetSettings",
 	"ListArtifacts",
 	"ListConsoleEntries",
 	"ListJobs",
+	"ListLetters",
 	"RetryJob",
 	"SaveCredentials",
+	"SaveLetter",
 	"SaveUI",
 	"SubmitJob",
 }
@@ -71,11 +79,16 @@ func TestNoBoundMethodReturnsAnInternalType(t *testing.T) {
 	// The value types the frontend genuinely needs.
 	allowed := map[string]bool{
 		"bindings.SettingsView": true,
+		"bindings.ExportResult": true,
+		"bindings.AppInfo":      true,
 		"jobs.Artifact":         true,
 		"jobs.Job":              true,
 		"jobs.Request":          true,
 		"console.Entry":         true,
 		"pocketbase.UI":         true,
+		"fold.Params":           true,
+		"fold.Scene":            true,
+		"letters.Letter":        true,
 	}
 
 	for i := 0; i < typ.NumMethod(); i++ {

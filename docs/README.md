@@ -2,10 +2,11 @@
 
 | Document | Read it for |
 | --- | --- |
+| [`fold-geometry.md`](fold-geometry.md) | The paper model, the panel topology and the derivation of the diagonal address transform. Read it before changing the fold. |
 | [`architecture.md`](architecture.md) | Why the pieces are shaped the way they are. Read it before changing the structure. |
 | [`porting.md`](porting.md) | The checklist for taking the template to a new application. |
 | [`troubleshooting.md`](troubleshooting.md) | The failures that cost time, and what actually fixes them. |
-| [`audit.md`](audit.md) | The 2026-10-28 audit: the defects, the reproductions, and what was fixed. |
+| [`audit.md`](audit.md) | The 2026-10-28 audit of the template: the defects, the reproductions, and what was fixed. |
 | [`code-review.md`](code-review.md) | The 2026-10-28 code review: the trade-offs that were deliberately kept, and why. |
 
 The repository-root files carry the rest:

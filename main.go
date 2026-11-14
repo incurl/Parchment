@@ -1,17 +1,14 @@
-// Valkyrie is a desktop application scaffold.
+// Parchment is an A4 self-mailer designer.
 //
-// It wires together Wails v3, an embedded PocketBase and a React
-// frontend, and it provides a generic job queue that an application
-// plugs its own backend into.
+// It writes a letter on Side A, lays the envelope face out on Side B at
+// the diagonal the fold geometry computes, previews both printed pages at
+// true A4 scale, and shows the sheet folding into a sealed packet in an
+// interactive 3D view.
 //
-// The UI shell is deliberately plain: it is the starting point, not
-// the product. Replace the contents of internal/runner with your own
-// work and extend the frontend as needed.
-//
-// Persistence, file storage, migrations and access rules are provided
-// by PocketBase, embedded as a Go library. PocketBase is never run as a
-// standalone process: its REST and file API is mounted on the Wails
-// asset server so the files are served from the UI's own origin.
+// Persistence, file storage, migrations and access rules are provided by
+// PocketBase, embedded as a Go library. PocketBase is never run as a
+// standalone process: its REST and file API is mounted on the Wails asset
+// server so the files are served from the UI's own origin.
 package main
 
 import (
@@ -22,11 +19,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/incurl/valkyrie/internal/bindings"
-	"github.com/incurl/valkyrie/internal/console"
-	"github.com/incurl/valkyrie/internal/jobs"
-	"github.com/incurl/valkyrie/internal/pocketbase"
-	"github.com/incurl/valkyrie/internal/runner"
+	"github.com/incurl/parchment/internal/bindings"
+	"github.com/incurl/parchment/internal/console"
+	"github.com/incurl/parchment/internal/jobs"
+	"github.com/incurl/parchment/internal/letters"
+	"github.com/incurl/parchment/internal/pocketbase"
+	"github.com/incurl/parchment/internal/runner"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -98,6 +96,15 @@ func run() error {
 
 	appService := bindings.NewAppService(pbService, settings, jobManager, consoleLog)
 
+	// The demo letter makes the whole flow visible on first launch: a
+	// body, an address and a working fold. It is only created when the
+	// collection is empty, so a user's own drafts are never touched.
+	if demo, created, err := letters.NewStore(pbService.App()).EnsureDemo(); err != nil {
+		consoleLog.Warn("letters", "Could not seed the demo letter: "+err.Error())
+	} else if created {
+		consoleLog.Info("letters", fmt.Sprintf("Seeded the demo letter %q.", demo.Title))
+	}
+
 	// Mount PocketBase's own REST and file API alongside the static
 	// frontend. This keeps everything on a single origin: no extra
 	// port, no separate PocketBase process and no CORS handling.
@@ -111,7 +118,7 @@ func run() error {
 		Name: bindings.AppName,
 		// The description lands in the about box of the platform, so
 		// it is the one place the version is visible without a menu.
-		Description: "A Wails v3 + PocketBase + React desktop application, version " + bindings.AppVersion,
+		Description: "An A4 self-mailer designer: write the letter, print the diagonal envelope face, fold it in 3D. Version " + bindings.AppVersion,
 		Services: []application.Service{
 			application.NewService(appService),
 		},
@@ -135,14 +142,14 @@ func run() error {
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:  bindings.AppName,
-		Width:  1440,
-		Height: 900,
+		Width:  1500,
+		Height: 950,
 		Mac: application.MacWindow{
 			InvisibleTitleBarHeight: 50,
 			Backdrop:                application.MacBackdropTranslucent,
 			TitleBar:                application.MacTitleBarHiddenInset,
 		},
-		BackgroundColour: application.NewRGB(6, 7, 15),
+		BackgroundColour: application.NewRGB(18, 17, 15),
 		URL:              "/",
 	})
 
@@ -164,10 +171,14 @@ func combineHandlers(apiHandler, staticHandler http.Handler) http.Handler {
 // dataDir returns the directory holding the database and the uploaded
 // files.
 //
-// The VALKYRIE_DATA_DIR environment variable overrides the default,
+// The PARCHMENT_DATA_DIR environment variable overrides the default,
 // which lets the app run against an isolated database during development
-// and testing.
+// and testing. VALKYRIE_DATA_DIR is still honoured, because the build
+// scripts and the documentation of the template used it.
 func dataDir() string {
+	if dir := os.Getenv("PARCHMENT_DATA_DIR"); dir != "" {
+		return dir
+	}
 	if dir := os.Getenv("VALKYRIE_DATA_DIR"); dir != "" {
 		return dir
 	}

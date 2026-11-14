@@ -5,19 +5,19 @@
 !include "FileFunc.nsh"
 
 !ifndef INFO_PROJECTNAME
-    !define INFO_PROJECTNAME "valkyrie"
+    !define INFO_PROJECTNAME "parchment"
 !endif
 !ifndef INFO_COMPANYNAME
     !define INFO_COMPANYNAME "incurl"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "Valkyrie"
+    !define INFO_PRODUCTNAME "Parchment"
 !endif
 !ifndef INFO_PRODUCTVERSION
     !define INFO_PRODUCTVERSION "0.1.0"
 !endif
 !ifndef INFO_COPYRIGHT
-    !define INFO_COPYRIGHT "© 2026, incurl"
+    !define INFO_COPYRIGHT "(c) 2026, incurl"
 !endif
 !ifndef PRODUCT_EXECUTABLE
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"

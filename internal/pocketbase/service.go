@@ -1,5 +1,5 @@
 // Package pocketbase embeds PocketBase as a Go library and owns the
-// Valkyrie persistence layer.
+// Parchment persistence layer.
 //
 // PocketBase is never run as a standalone process. The application
 // bootstraps the library, runs the Go migrations in the migrations
@@ -22,9 +22,9 @@ import (
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 
-	// Importing the migrations package registers the Valkyrie schema
+	// Importing the migrations package registers the Parchment schema
 	// migrations with PocketBase's own migration list.
-	_ "github.com/incurl/valkyrie/internal/pocketbase/migrations"
+	_ "github.com/incurl/parchment/internal/pocketbase/migrations"
 )
 
 // Service owns the embedded PocketBase application.
@@ -46,14 +46,30 @@ func NewService(dataDir string) *Service {
 	return &Service{dataDir: dataDir}
 }
 
-// DefaultDataDir returns the default location of the Valkyrie data
+// DefaultDataDir returns the default location of the Parchment data
 // directory.
+//
+// The application data lives under the user's home directory, at
+// $XDG_DATA_HOME/parchment/pb_data or
+// ~/.local/share/parchment/pb_data, so it survives a rebuild and a
+// reinstall. When there is no home directory - a stripped container, a
+// broken passwd entry - it falls back to pb_data next to the binary,
+// which always exists but may be read-only.
 func DefaultDataDir() string {
+	if xdg := os.Getenv("XDG_DATA_HOME"); xdg != "" {
+		return filepath.Join(xdg, appDirName, "pb_data")
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		return filepath.Join(home, ".local", "share", appDirName, "pb_data")
+	}
 	if exe, err := os.Executable(); err == nil {
 		return filepath.Join(filepath.Dir(exe), "pb_data")
 	}
 	return "pb_data"
 }
+
+// appDirName is the directory the application owns under the data home.
+const appDirName = "parchment"
 
 // App returns the underlying PocketBase application.
 func (s *Service) App() *pocketbase.PocketBase { return s.app }
@@ -61,7 +77,7 @@ func (s *Service) App() *pocketbase.PocketBase { return s.app }
 // DataDir returns the directory holding the database and the files.
 func (s *Service) DataDir() string { return s.dataDir }
 
-// Bootstrap initialises PocketBase and applies the Valkyrie migrations.
+// Bootstrap initialises PocketBase and applies the Parchment migrations.
 //
 // PocketBase is used purely as a library: Start() is never called, so
 // no HTTP server is bound and no separate process is required.
@@ -78,7 +94,7 @@ func (s *Service) Bootstrap() error {
 		return fmt.Errorf("bootstrap pocketbase: %w", err)
 	}
 
-	// Apply the Go migrations that create the Valkyrie schema.
+	// Apply the Go migrations that create the Parchment schema.
 	if err := s.app.RunAppMigrations(); err != nil {
 		return fmt.Errorf("run migrations: %w", err)
 	}
@@ -90,7 +106,7 @@ func (s *Service) Bootstrap() error {
 //
 // The returned handler serves PocketBase's REST API and, crucially, its
 // native file route (/api/files/<collection>/<record>/<filename>).
-// Valkyrie mounts it on the Wails asset server so that stored files are
+// Parchment mounts it on the Wails asset server so that stored files are
 // served from the same origin as the UI, without opening a second port.
 func (s *Service) Handler() (http.Handler, error) {
 	if s.app == nil {

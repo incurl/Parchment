@@ -74,9 +74,21 @@ func TestCombineHandlersRoutesAPIToPocketBase(t *testing.T) {
 // directory can be relocated, so that the app can run against an
 // isolated database during development and testing.
 func TestDataDirHonoursTheEnvironmentVariable(t *testing.T) {
-	t.Setenv("VALKYRIE_DATA_DIR", "/tmp/valkyrie-test-data")
+	t.Setenv("PARCHMENT_DATA_DIR", "/tmp/parchment-test-data")
+	t.Setenv("VALKYRIE_DATA_DIR", "")
 
-	if got := dataDir(); got != "/tmp/valkyrie-test-data" {
+	if got := dataDir(); got != "/tmp/parchment-test-data" {
 		t.Errorf("data dir = %q, want the overridden one", got)
+	}
+}
+
+// TestDataDirKeepsTheTemplateVariable checks the compatibility fallback:
+// the build scripts and the template's documentation used the old name.
+func TestDataDirKeepsTheTemplateVariable(t *testing.T) {
+	t.Setenv("PARCHMENT_DATA_DIR", "")
+	t.Setenv("VALKYRIE_DATA_DIR", "/tmp/legacy-test-data")
+
+	if got := dataDir(); got != "/tmp/legacy-test-data" {
+		t.Errorf("data dir = %q, want the legacy override", got)
 	}
 }

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/incurl/valkyrie/internal/console"
-	"github.com/incurl/valkyrie/internal/jobs"
-	"github.com/incurl/valkyrie/internal/pocketbase"
+	"github.com/incurl/parchment/internal/console"
+	"github.com/incurl/parchment/internal/jobs"
+	"github.com/incurl/parchment/internal/pocketbase"
 )
 
 // newTestService creates an application service backed by a throwaway

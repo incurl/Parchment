@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/incurl/valkyrie/internal/console"
-	"github.com/incurl/valkyrie/internal/jobs"
-	"github.com/incurl/valkyrie/internal/pocketbase"
+	"github.com/incurl/parchment/internal/console"
+	"github.com/incurl/parchment/internal/jobs"
+	"github.com/incurl/parchment/internal/pocketbase"
 )
 
 // Example is a runner that shows the shape an application's runner

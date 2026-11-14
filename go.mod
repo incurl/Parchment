@@ -1,4 +1,4 @@
-module github.com/incurl/valkyrie
+module github.com/incurl/parchment
 
 go 1.26.0
 

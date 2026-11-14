@@ -1,284 +1,163 @@
-# Valkyrie
+# Parchment
 
-A desktop application scaffold: **Wails v3** + **PocketBase** + **Vite** +
-**React**, wired together and ready to be built on.
+An A4 self-mailer studio for Linux: write a letter, lay out the envelope
+face, print both sides at true A4 scale, and watch the sheet fold into a
+sealed packet in an interactive 3D view.
 
-It is a template, not a product. The plumbing — the embedded database, the
-job queue, the event bridge, the debug console, the build and packaging
-tooling, the test setup — is done, so that a new project starts from a
-working application instead of an empty folder.
+Built on **Wails v3**, an **embedded PocketBase** and **React 19 +
+Three.js**. It runs entirely offline: the database is a SQLite file next
+to the user, the renderer is in the webview, and nothing is sent over the
+network.
 
-```
-Wails webview
-├── React 19 + Vite + TypeScript + TanStack Query
-│   ├── app/           the application shell
-│   ├── features/      one panel per concern
-│   ├── bindings/      typed wrappers over the generated bindings
-│   └── ui/            pure helpers, unit tested
-│
-└──── Wails bindings (primary channel) ───────────────────────┐
-        Go: internal/bindings/ → internal/jobs/ → internal/runner/
-                                                (your backend) │
-                            └→ internal/pocketbase/            │
-                                    (embedded, library)       │
-                                     └→ migrations, file fields│
-        PocketBase's REST + file API mounted at /api/* on the    │
-        same origin as the UI.                                   │
-```
+## What it does
 
-## What is in the box
+1. **Side A** is the letter. You write it in a plain-text editor; the app
+   warns when it runs into the fold margin.
+2. **Side B** is the envelope face: recipient, return address and stamp.
+   The app prints them **at a diagonal** on the flat sheet, computed from
+   the fold geometry, so they read upright on the folded packet.
+3. **Print preview** shows both sides at true A4 scale, with an optional
+   fold-plan overlay, and prints them at 1:1.
+4. **3D fold** shows the real sheet - textured with your own two pages -
+   folding into a sealed packet. Rotate, pan and zoom at any point, or
+   scrub the fold from flat to sealed and back.
+5. **Export PDF** writes two A4 pages at exact scale, ready for duplex
+   printing.
 
-| Piece | Where | What it does |
-| --- | --- | --- |
-| Job queue | `internal/jobs/` | Persistence, scheduling, cancellation, status transitions, events |
-| Runner | `internal/runner/` | **The extension point.** The scaffold ships an echo runner; replace it |
-| Embedded database | `internal/pocketbase/` | Bootstrap, migrations, settings, encrypted secrets |
-| Wails services | `internal/bindings/` | The API the frontend calls |
-| Debug console | `internal/console/` | An in-memory log of the application traffic, shown in the UI |
-| React shell | `frontend/src/` | A working three-column layout with the queue, the console and the settings |
+The defining invariant: after folding, the outward face is a **flat,
+single-layer rectangle** with the address upright, and every crease,
+flap and seam is on the reverse. The letter is inside. This is
+structural, not checked after the fact: the front panel is the root of
+the hinge tree and never moves, so no crease can land on it.
 
-The frontend talks to the backend **only** through the Wails bindings. It
-never talks to PocketBase or to a remote API directly.
+## Build
 
-## Requirements
-
-| Tool | Version | Notes |
-| --- | --- | --- |
-| Go | 1.26+ | `toolchain go1.26.10` is pinned in `go.mod` |
-| Node | 20+ | |
-| Wails CLI | v3.0.0 | `go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0` |
-| Linux build deps | gtk4, webkitgtk-6.0, gcc | `pkg-config` must find them |
-
-> The Wails v3 CLI binary is **`wails3`**, not `wails`, and the project
-> configuration is **`build/config.yml`**, not `wails.json`.
-
-## Getting started
+Requires Go 1.26 (the toolchain is pinned in `go.mod`), Node 20+, and the
+usual Wails v3 Linux dependencies (GTK 3, WebKitGTK 4.1).
 
 ```bash
-# 1. Install the Wails v3 CLI
-go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0
+# Frontend dependencies, once
+cd frontend && npm install --legacy-peer-deps && cd ..
 
-# 2. Install the frontend dependencies
-cd frontend && npm install && cd ..
+# Regenerate the typed bindings after changing a bound Go method
+PATH="$HOME/go/bin:$PATH" wails3 generate bindings -clean=true -ts -i
 
-# 3. Run the app in development mode
-wails3 dev
+# Build the desktop application -> bin/parchment
+PATH="$HOME/go/bin:$PATH" wails3 build
+
+# Build the headless server mode -> bin/parchment-server
+PATH="$HOME/go/bin:$PATH" wails3 task build:server
+
+# Package an AppImage / .deb
+PATH="$HOME/go/bin:$PATH" wails3 task package
 ```
 
-`wails3 dev` starts the Vite dev server, regenerates the bindings and
-rebuilds the Go backend on every change.
+`wails3` lives in `~/go/bin` and is not on the default `PATH` of a
+non-interactive shell; prefix the commands as above.
 
-To build a distributable binary:
+## Run
 
 ```bash
-wails3 build      # → bin/valkyrie
+./bin/parchment
 ```
 
-The [Task](https://taskfile.dev) wrappers are the ones to reach for when
-you want to package:
+In server mode the same binary serves the UI and the embedded database
+over HTTP:
 
 ```bash
-task build            # a production binary for the host platform
-task package          # the platform packages (deb, rpm, AppImage, dmg, nsis)
-task run              # build and run
-task build:server     # a headless HTTP server binary
-task build:docker     # a minimal container image
+PARCHMENT_DATA_DIR=/tmp/parchment WAILS_SERVER_PORT=8080 ./bin/parchment-server
 ```
 
-## Making it yours
-
-### 1. Rename it
-
-| What | Where |
-| --- | --- |
-| The module path | `go.mod` |
-| The product name | `build/config.yml`, `build/*/Taskfile.yml`, `internal/bindings/service.go` |
-| The bundle identifier | `build/config.yml`, `build/darwin/Info.plist`, `build/ios/Info.plist` |
-| The frontend name | `frontend/package.json` |
-
-The `APP_NAME` variable in the root `Taskfile.yml` drives the binary name
-and the package names.
-
-### 2. Write your runner
-
-The queue is generic. A job carries a title, a prompt, an arbitrary set of
-parameters and an arbitrary result, and the work is delegated to a
-`jobs.Runner`:
-
-```go
-type Runner interface {
-    Run(ctx context.Context, job Job) (*Result, error)
-}
-```
-
-Replace `internal/runner/echo.go` with your own:
-
-```go
-// MyRunner talks to the remote API.
-type MyRunner struct {
-    settings *pocketbase.SettingsStore
-    log      *console.Log
-}
-
-func (r *MyRunner) Run(ctx context.Context, job jobs.Job) (*jobs.Result, error) {
-    apiKey, found, err := r.settings.GetAPIKey()
-    if err != nil {
-        return nil, err
-    }
-    if !found {
-        return nil, fmt.Errorf("no API key is configured. Add one in Settings.")
-    }
-
-    // The context is cancelled when the user cancels the job: honour
-    // it, so that the job stops promptly.
-    select {
-    case <-ctx.Done():
-        return nil, ctx.Err()
-    default:
-    }
-
-    result, err := callTheAPI(ctx, apiKey, job.Prompt, job.Params)
-    if err != nil {
-        // A *Error carries a numeric code, which the UI can branch on.
-        return nil, &jobs.Error{Code: 42, Message: "the API refused the request", Err: err}
-    }
-
-    return &jobs.Result{
-        ArtifactIDs: result.ArtifactIDs,
-        Payload:     map[string]any{"answer": result.Answer},
-    }, nil
-}
-```
-
-Then register it in `main.go`:
-
-```go
-jobManager := jobs.NewManager(
-    pbService.App(),
-    jobs.WithLog(consoleLog),
-    jobs.WithRunnerFunc(func() jobs.Runner {
-        return runner.NewMyRunner(settings, consoleLog)
-    }),
-)
-```
-
-The queue, the persistence, the cancellation, the events and the history
-all work the same way, whatever the runner does.
-
-### 3. Extend the schema
-
-The schema lives in `internal/pocketbase/migrations/`. Add a migration
-with a **later timestamp** than the ones already applied — the list is
-sorted by file name, so the name is the ordering key:
-
-```go
-func init() {
-    registerMigration("1732000000_add_notes.go", func(app core.App) error {
-        collection, err := app.FindCollectionByNameOrId("jobs")
-        if err != nil {
-            return err
-        }
-        if collection.Fields.GetByName("notes") != nil {
-            return nil // already applied
-        }
-        collection.Fields.Add(&core.TextField{Name: "notes"})
-        return app.Save(collection)
-    })
-}
-```
-
-### 4. Extend the frontend
-
-`frontend/src/features/` holds one panel per concern. Add yours next to
-them and wire it into `frontend/src/app/App.tsx`.
-
-The shell has two things worth knowing about:
-
-- The **debug console** is hidden until it is asked for, with
-  **Ctrl+Shift+I** or with the **Console** button in the header. The
-  button carries the error count, so a failure is visible while the
-  console is closed.
-- The **settings dialog** is tabbed: the credentials are on the
-  *Connection* tab and the interface scale on the *Zoom* tab.
-
-The generated bindings are plain JavaScript with JSDoc types. They are
-re-exported behind a strongly typed surface in `frontend/src/bindings/`,
-so the components never import a generated file directly.
+`WAILS_SERVER_HOST` overrides the bind address (default `localhost`) and
+`WAILS_SERVER_PORT` the port.
 
 ## Data
 
-Everything lives in `pb_data/` next to the executable:
+Everything lives in the user's data directory:
 
-| Path | Contents |
-| --- | --- |
-| `pb_data/data.db` | The SQLite database (3 collections) |
-| `pb_data/storage/` | The uploaded and generated files, served by PocketBase's native file route |
-| `pb_data/.valkyrie_key` | The AES-256-GCM key for the secrets (mode 0600) |
-
-Set `VALKYRIE_DATA_DIR` to relocate it.
-
-## Collections
-
-| Collection | Purpose |
-| --- | --- |
-| `jobs` | The job metadata: the prompt, the parameters, the status, the result, the errors |
-| `artifacts` | The files a job produced or consumed, with their metadata |
-| `app_settings` | The encrypted secrets and the preferences |
-
-All writes go through the Go services: the `create`, `update` and `delete`
-rules are closed, so the frontend can only read. PocketBase's own rules,
-migrations, file fields and hooks are used as-is.
-
-## Secrets
-
-The API key is write-only from the UI's point of view. It is encrypted
-with AES-256-GCM before it is written to the database, and the key is
-generated on first run and kept in a `0600` file inside the data
-directory. The `app_settings` collection has no public list or view rule,
-so the Go backend is the only reader. The UI only ever learns whether a
-key is present.
-
-The debug console shows a fingerprint of the key, never the key itself.
-
-## Server mode
-
-The same binary runs headless, with no GUI dependencies:
-
-```bash
-task build:server
-WAILS_SERVER_HOST=0.0.0.0 WAILS_SERVER_PORT=8080 ./bin/valkyrie-server
+```
+~/.local/share/parchment/pb_data/
+├── data.db         the SQLite database (letters, settings)
+├── storage/        PocketBase file storage
+├── .parchment_key  the AES-256-GCM key for the encrypted settings (0600)
+└── exports/        the PDFs written by Export
 ```
 
-It serves the frontend and the PocketBase API over HTTP. A minimal
-container image is built with `task build:docker`.
 
-## Tests
+## Changing the fold
 
-```bash
-go test ./...                    # the queue, the schema, the settings, the console
-cd frontend && npm test           # the zoom, the queue helpers, the console
-python3 tools/license-audit.py    # no copyleft dependency
-go run ./tools/e2e-check          # a live end-to-end run of the backend
+The **Paper** tab edits the parameters that define the fold; the
+**Computed result** card next to it shows what the engine made of them.
+
+| Parameter | Meaning |
+| --- | --- |
+| Panel width / height | The visible front panel, and therefore the packet size |
+| Rotation | The angle between the front panel and the sheet. This is the diagonal the address is printed at |
+| Offset X / Y | Moves the panel away from the sheet's centre, to bias the flaps |
+| Corner tuck | How far past the panel's edge the corner creases sit |
+| Required seam overlap | The minimum overlap the side flaps must reach, checked by the metrics |
+
+Every change rebuilds the panels, the hinges, the fold schedule, the
+address transform and the packet metrics together. The address stays
+upright because it is laid out in the packet's frame, never in the
+sheet's.
+
+A parameter set that cannot be folded is rejected with a message rather
+than drawn wrong: a panel that does not fit inside the sheet after its
+rotation, a panel as large as the sheet, or a rotation of 90 degrees or
+more.
+
+## How the fold works
+
+See [`docs/fold-geometry.md`](docs/fold-geometry.md) for the derivation
+of the diagonal address transform and the panel topology. In short:
+
+- The sheet is partitioned into **nine rigid panels**: the front panel
+  (the root of the hinge tree), four edge flaps, and four corner tucks.
+- Each panel is a rigid polygon with its own texture coordinates into the
+  printed pages; folds are rotations about shared edges.
+- The fold is one scalar `t ∈ [0,1]`. Each hinge has a window in `t` and
+  its angle is interpolated across it, so the folds happen in sequence.
+- The front panel never moves. Everything else is behind it at `t = 1`.
+
+## Project layout
+
+```
+internal/fold/         the fold-geometry engine: panels, hinges, layout, metrics
+internal/letters/      the letter drafts, stored in PocketBase
+internal/pdf/          a dependency-free PDF writer (exact A4)
+internal/export/       the two-page letter renderer
+internal/pocketbase/   the embedded database, migrations, settings
+internal/bindings/     the Wails service the UI calls
+frontend/src/app/      the shell, the workspace state
+frontend/src/features/ the panels: letter, envelope, preview, 3D fold, paper
+frontend/src/bindings/ typed wrappers over the generated bindings
+tools/fold-preview/    a headless render of the folded packet to PNG
+tools/e2e-check/       a live end-to-end run of the backend
 ```
 
-The end-to-end check runs the whole pipeline without a GUI: it applies the
-schema, submits a job, runs the stub runner, stores an artifact and
-fetches it back through PocketBase's file route.
+The frontend never talks to PocketBase directly: every read and write
+goes through the Wails bindings.
 
-## Documentation
+## Verify
 
-| Document | Read it for |
-| --- | --- |
-| [docs/architecture.md](docs/architecture.md) | Why the pieces are shaped the way they are |
-| [docs/porting.md](docs/porting.md) | The checklist for taking this template to a new application |
-| [docs/troubleshooting.md](docs/troubleshooting.md) | The failures that cost time, and what fixes them |
-| [docs/audit.md](docs/audit.md) | The audit of the scaffold: the defects and their reproductions |
-| [docs/code-review.md](docs/code-review.md) | The trade-offs that were deliberately kept, and why |
-| [CONTEXT.md](CONTEXT.md) | The vocabulary: what each term means, and what it does not |
-| [AGENTS.md](AGENTS.md) | The working rules for AI coding agents |
-| [.agents/skills/](.agents/skills) | Task-scoped procedures: new application, backend method, migration, frontend panel, release |
+```bash
+go test ./...                                  # Go tests
+go test -race ./internal/... .                 # the race detector
+go vet ./internal/... .
+gofmt -l internal/ main.go main_test.go tools/ # must print nothing
+go run ./tools/e2e-check                       # live end-to-end run
+go run ./tools/fold-preview                    # PNG of the folded packet
 
-## Licence
+cd frontend
+npm run typecheck
+npm test
+npm run build
+```
 
-Valkyrie is MIT licensed. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
-for the third party attributions.
+`go test ./...` also tries to build `build/ios`, which is a separate
+`main` package behind a build tag and always fails; ignore that one line.
+
+`$XDG_DATA_HOME/parchment/pb_data` is used when `XDG_DATA_HOME` is set.
+`PARCHMENT_DATA_DIR` relocates everything, which is how the tests and the
+end-to-end check run against an isolated database.

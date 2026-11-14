@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/incurl/valkyrie/internal/pocketbase"
+	"github.com/incurl/parchment/internal/pocketbase"
 )
 
 // newTestManager creates a manager backed by a throwaway database.

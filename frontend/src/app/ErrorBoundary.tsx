@@ -46,7 +46,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
           <h1>The interface stopped working</h1>
           <p className="text-dim">
             An unexpected error stopped the window from rendering. Nothing has
-            been lost: the jobs are stored in the local database.
+            been lost: your letters are stored in the local database.
           </p>
           <pre className="crash-message">{error.message}</pre>
           <div className="crash-actions">

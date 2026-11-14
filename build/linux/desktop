@@ -1,13 +1,13 @@
 [Desktop Entry]
 Version=1.0
-Name=Valkyrie
-Comment=A Wails v3 desktop application
+Name=Parchment
+Comment=An A4 self-mailer designer: write the letter, print the diagonal envelope face, fold it in 3D
 # The Exec line includes %u to pass the URL to the application
-Exec=/usr/local/bin/valkyrie %u
+Exec=/usr/local/bin/parchment %u
 Terminal=false
 Type=Application
-Icon=valkyrie
+Icon=parchment
 Categories=Utility;
-StartupWMClass=valkyrie
+StartupWMClass=parchment
 
  

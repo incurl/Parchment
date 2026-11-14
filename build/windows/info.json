@@ -6,10 +6,10 @@
 		"0409": {
 			"ProductVersion": "0.1.0",
 			"CompanyName": "incurl",
-			"FileDescription": "A Wails v3 desktop application",
-			"LegalCopyright": "© 2026, incurl",
-			"ProductName": "Valkyrie",
-			"Comments": "A Wails v3 desktop application"
+			"FileDescription": "An A4 self-mailer designer: write the letter, print the diagonal envelope face, fold it in 3D",
+			"LegalCopyright": "(c) 2026, incurl",
+			"ProductName": "Parchment",
+			"Comments": "A desktop application built on Wails v3, an embedded PocketBase and React"
 		}
 	}
 }

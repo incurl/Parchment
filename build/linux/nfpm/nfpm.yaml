@@ -3,26 +3,26 @@
 #
 # The lines below are called `modelines`. See `:help modeline`
 
-name: "valkyrie"
+name: "parchment"
 arch: ${GOARCH}
 platform: "linux"
 version: "0.1.0"
 section: "default"
 priority: "extra"
 maintainer: ${GIT_COMMITTER_NAME} <${GIT_COMMITTER_EMAIL}>
-description: "A Wails v3 desktop application"
+description: "An A4 self-mailer designer: write the letter, print the diagonal envelope face, fold it in 3D"
 vendor: "incurl"
-homepage: "https://github.com/incurl/valkyrie"
+homepage: "https://wails.io"
 license: "MIT"
 release: "1"
 
 contents:
-  - src: "./bin/valkyrie"
-    dst: "/usr/local/bin/valkyrie"
+  - src: "./bin/parchment"
+    dst: "/usr/local/bin/parchment"
   - src: "./build/appicon.png"
-    dst: "/usr/share/icons/hicolor/128x128/apps/valkyrie.png"
-  - src: "./build/linux/valkyrie.desktop"
-    dst: "/usr/share/applications/valkyrie.desktop"
+    dst: "/usr/share/icons/hicolor/128x128/apps/parchment.png"
+  - src: "./build/linux/parchment.desktop"
+    dst: "/usr/share/applications/parchment.desktop"
 
 # Default dependencies for the GTK4 + WebKitGTK 6.0 stack (Ubuntu 24.04+ / Debian 13+)
 depends:

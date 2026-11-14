@@ -12,7 +12,7 @@ build/ios/xcode/gen/
 build/android/overlay.json
 build/android/gen/
 
-# Valkyrie local data & build output
+# Parchment local data # Valkyrie local data & build output build output
 pb_data/
 frontend/bindings/
 

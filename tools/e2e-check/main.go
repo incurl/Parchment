@@ -12,20 +12,25 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
-	"github.com/incurl/valkyrie/internal/jobs"
-	valkyriepb "github.com/incurl/valkyrie/internal/pocketbase"
+	"github.com/incurl/parchment/internal/export"
+	"github.com/incurl/parchment/internal/fold"
+	"github.com/incurl/parchment/internal/jobs"
+	"github.com/incurl/parchment/internal/letters"
+	parchmentpb "github.com/incurl/parchment/internal/pocketbase"
 )
 
 func main() {
-	dir, err := os.MkdirTemp("", "valkyrie-e2e")
+	dir, err := os.MkdirTemp("", "parchment-e2e")
 	if err != nil {
 		panic(err)
 	}
 	defer os.RemoveAll(dir)
 
-	svc := valkyriepb.NewService(dir)
+	svc := parchmentpb.NewService(dir)
 	if err := svc.Bootstrap(); err != nil {
 		panic(err)
 	}
@@ -124,5 +129,83 @@ func main() {
 		os.Exit(1)
 	}
 
+	letterFlow(dir, svc)
+
 	fmt.Println("\nEND TO END: PASS")
+}
+
+// letterFlow exercises the application's own path: seed the demo, build
+// the fold, save and reload a draft, and write the two-page PDF.
+func letterFlow(dir string, svc *parchmentpb.Service) {
+	store := letters.NewStore(svc.App())
+
+	demo, created, err := store.EnsureDemo()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("6. Demo letter seeded: %q (created=%v)\n", demo.Title, created)
+
+	scene, err := fold.Build(demo.Fold)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("7. Fold built: %d panels, %d hinges, %.2f x %.2f in packet\n",
+		len(scene.Panels), len(scene.FoldOrder),
+		scene.Metrics.HeightIn, scene.Metrics.LengthIn)
+	fmt.Printf("   address printed at %.3f degrees (derived from the panel's first edge)\n",
+		scene.DerivedRotationDeg())
+	fmt.Printf("   back coverage %.1f%%, overhang %.2f mm, warnings %d\n",
+		scene.Metrics.BackCoverage*100, scene.Metrics.ProtrusionMM,
+		len(scene.Metrics.Warnings))
+	if scene.Metrics.BackCoverage < 0.995 || len(scene.Metrics.Warnings) > 0 {
+		fmt.Println("   FAIL: the demo fold does not validate")
+		os.Exit(1)
+	}
+
+	// The address transform must round-trip. This is the check the
+	// acceptance criteria ask for, run against a live build.
+	toFlat := scene.FrontPanel.TransformToFlat
+	fromFlat := scene.FrontPanel.TransformFromFlat
+	for _, point := range scene.Layout.AddressRect.Polygon() {
+		back := fromFlat.Apply(toFlat.Apply(point))
+		if back.Sub(point).Length() > 1e-9 {
+			fmt.Printf("   FAIL: the address transform moved (%.2f, %.2f)\n", point.X, point.Y)
+			os.Exit(1)
+		}
+	}
+	fmt.Println("   the address transform round-trips exactly")
+
+	// Save an edit and read it back, which is the persistence path the
+	// UI uses.
+	demo.Title = "E2E draft"
+	demo.RecipientName = "E2E Recipient"
+	saved, err := store.Save(demo)
+	if err != nil {
+		panic(err)
+	}
+	reloaded, err := store.Get(saved.ID)
+	if err != nil {
+		panic(err)
+	}
+	if reloaded.RecipientName != "E2E Recipient" {
+		fmt.Println("   FAIL: the saved letter did not come back")
+		os.Exit(1)
+	}
+	fmt.Println("8. Draft saved and reloaded from PocketBase")
+
+	// The PDF is written to the same place the export writes it.
+	data := export.LetterPDF(scene, reloaded, export.Options{})
+	exports := filepath.Join(dir, "exports")
+	if err := os.MkdirAll(exports, 0o700); err != nil {
+		panic(err)
+	}
+	path := filepath.Join(exports, "e2e.pdf")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		panic(err)
+	}
+	if !strings.HasPrefix(string(data), "%PDF-1.4") || !strings.Contains(string(data), "/Count 2") {
+		fmt.Println("   FAIL: the exported file is not a two-page PDF")
+		os.Exit(1)
+	}
+	fmt.Printf("9. PDF exported: %s (%d bytes, two A4 pages)\n", path, len(data))
 }
